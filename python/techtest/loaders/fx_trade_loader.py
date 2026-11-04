@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable, Iterator
 
 from techtest.models import Trade, FxTrade, FxTradeList
 
@@ -12,11 +12,8 @@ class FxTradeLoader:
         self.data_file = data_file
 
     def load_trades(self) -> Iterable[Trade]:
-        trade_list = FxTradeList()
 
-        self._load_trades_from_file(self.data_file, trade_list)
-
-        return trade_list
+        yield from self._load_trades_from_file(self.data_file)
 
 
     def _create_trade_from_line(self, line: str) -> FxTrade:
@@ -31,7 +28,7 @@ class FxTradeLoader:
 
         return trade
 
-    def _load_trades_from_file(self, filename: str, trade_list: FxTradeList) -> None:
+    def _load_trades_from_file(self, filename: str) -> Iterator[FxTrade]:
 
         # utf-8-sig skips the byte order mark at the start of the file
         with open(filename, encoding="utf-8-sig") as stream:
@@ -42,4 +39,4 @@ class FxTradeLoader:
                 if line.startswith("END"):
                         continue
 
-                trade_list.add(self._create_trade_from_line(line.rstrip("\r\n")))
+                yield self._create_trade_from_line(line.rstrip("\r\n"))
