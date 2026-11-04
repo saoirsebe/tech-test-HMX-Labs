@@ -9,9 +9,9 @@ from techtest.models import Trade
 
 class SerialTradeLoader:
     def load_trades(self) -> Iterable[Iterable[Trade]]:
-        loaders = self._get_trade_loaders()
-
-        return [loader.load_trades() for loader in loaders]
+        # Lazy: each source is only opened when the pricer reaches it.
+        for loader in self._get_trade_loaders():
+            yield loader.load_trades()
 
     def _get_trade_loaders(self) -> Iterable[BondTradeLoader | FxTradeLoader]:
         return [
