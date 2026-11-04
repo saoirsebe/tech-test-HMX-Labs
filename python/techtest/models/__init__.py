@@ -1,3 +1,4 @@
+from techtest.models.fx_trade_list import FxTradeList
 from techtest.models.trade import Trade
 from techtest.models.trade_receiver import TradeReceiver
 from techtest.models.trade_enumerable import TradeEnumerable
@@ -14,5 +15,5 @@ from techtest.models.scalar_results import ScalarResults
 
 __all__ = [
     "Trade", "TradeReceiver", "TradeEnumerable", "Trades", "ResultReceiver", "PricingEngine",
-    "BaseTrade", "BondTrade", "FxTrade", "TradeList", "BondTradeList", "ScalarResult", "ScalarResults",
+    "BaseTrade", "BondTrade", "FxTrade", "TradeList", "BondTradeList","FxTradeList", "ScalarResult", "ScalarResults",
 ]

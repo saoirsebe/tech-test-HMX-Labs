@@ -6,7 +6,7 @@ from techtest.models.base_trade import BaseTrade
 class BondTrade(BaseTrade):
     GOV_BOND_TRADE_TYPE = "GovBond"
     CORP_BOND_TRADE_TYPE = "CorpBond"
-    SUPRA_BOND_TRADE_TYPE = "Supra"
+    SUPRA_BOND_TRADE_TYPE = "Supra" # New type to support item 10 in BondTrades.dat
 
     def __init__(self, trade_id: str, trade_type: str) -> None:
         super().__init__()
