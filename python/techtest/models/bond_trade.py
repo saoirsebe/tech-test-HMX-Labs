@@ -6,6 +6,7 @@ from techtest.models.base_trade import BaseTrade
 class BondTrade(BaseTrade):
     GOV_BOND_TRADE_TYPE = "GovBond"
     CORP_BOND_TRADE_TYPE = "CorpBond"
+    SUPRA_BOND_TRADE_TYPE = "Supra"
 
     def __init__(self, trade_id: str, trade_type: str) -> None:
         super().__init__()
@@ -14,7 +15,8 @@ class BondTrade(BaseTrade):
 
         if trade_type not in (
             self.GOV_BOND_TRADE_TYPE,
-            self.CORP_BOND_TRADE_TYPE
+            self.CORP_BOND_TRADE_TYPE,
+            self.SUPRA_BOND_TRADE_TYPE
         ):
             raise ValueError("Invalid bond trade type")
 
