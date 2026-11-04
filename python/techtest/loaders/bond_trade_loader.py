@@ -13,6 +13,7 @@ class BondTradeLoader:
         self.data_file = data_file
 
     def load_trades(self) -> Iterable[Trade]:
+        # Only one trade is held at a time
         yield from self._load_trades_from_file(self.data_file)
 
 

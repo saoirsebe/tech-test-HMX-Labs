@@ -1,16 +1,46 @@
 from __future__ import annotations
 
+import importlib
 from typing import Iterable
 
 from techtest.models import PricingEngine, ResultReceiver, Trade
+import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from techtest.risk_system.pricing_config_loader import PricingConfigLoader
 
 
 class ParallelPricer:
     def __init__(self) -> None:
         self._pricers: dict[str, PricingEngine] = {}
 
+
     def price(self, trade_containers: Iterable[Iterable[Trade]], result_receiver: ResultReceiver) -> None:
-        raise NotImplementedError()
+        self._load_pricers()
+
+        with ThreadPoolExecutor() as executor:
+            futures = []
+            for trade_container in trade_containers:
+                for trade in trade_container:
+                    if trade.trade_type not in self._pricers:
+                        result_receiver.add_error(trade.trade_id, "No Pricing Engines available for this trade type")
+                        continue
+
+                    pricer = self._pricers[trade.trade_type]
+                    futures.append(executor.submit(pricer.price, trade, result_receiver))
+
+            # Block until every pricing call has finished, re-raising any exception from a worker
+            for future in futures:
+                future.result()
+
 
     def _load_pricers(self) -> None:
-        raise NotImplementedError()
+        pricing_config_loader = PricingConfigLoader()
+        pricing_config_loader.config_file = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "pricing_config", "PricingEngines.xml")
+        pricer_config = pricing_config_loader.load_config()
+
+        for config_item in pricer_config:
+            module = importlib.import_module(config_item.module)
+            engine_class = getattr(module, config_item.class_name)
+            self._pricers[config_item.trade_type] = engine_class()
