@@ -8,6 +8,8 @@ from techtest.models import Trade, FxTrade, FxTradeList
 
 class FxTradeLoader:
     _SEPARATOR = "¬"
+    _EXPECTED_FIELDS = 9
+
     def __init__(self, data_file: str) -> None:
         self.data_file = data_file
 
@@ -18,6 +20,9 @@ class FxTradeLoader:
 
     def _create_trade_from_line(self, line: str) -> FxTrade:
         items = line.split(self._SEPARATOR)
+        if len(items) != self._EXPECTED_FIELDS:
+            raise ValueError(f"expected {self._EXPECTED_FIELDS} fields, got {len(items)}")
+
         trade = FxTrade(items[8], items[0])
         trade.trade_date = datetime.fromisoformat(items[1])
         trade.instrument = items[2] + items[3]
@@ -35,8 +40,12 @@ class FxTradeLoader:
             next(stream, None)  # Skip the header line
             next(stream, None)  # Skip the header line
 
-            for line in stream:
-                if line.startswith("END"):
+            for line_number, line in enumerate(stream, start=3):
+                line = line.rstrip("\r\n")
+                if not line or line.startswith("END"):
                         continue
 
-                yield self._create_trade_from_line(line.rstrip("\r\n"))
+                try:
+                    yield self._create_trade_from_line(line)
+                except ValueError as exc:
+                    raise ValueError(f"{filename}, line {line_number}: {exc}") from exc
