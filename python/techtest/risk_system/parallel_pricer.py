@@ -16,6 +16,14 @@ class ParallelPricer:
         self._pricers: dict[str, PricingEngine] = {}
 
     def price(self, trade_containers: Iterable[Iterable[Trade]], result_receiver: ResultReceiver) -> None:
+        # Input validation
+        if trade_containers is None:
+            raise ValueError("trade_containers must not be None")
+        if result_receiver is None:
+            raise ValueError("result_receiver must not be None")
+        if isinstance(trade_containers, (str, bytes)):
+            raise TypeError("trade_containers must be an iterable of trade containers, not a string")
+
         self._load_pricers()
 
         with ThreadPoolExecutor() as executor:
