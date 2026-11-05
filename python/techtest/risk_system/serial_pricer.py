@@ -44,7 +44,31 @@ class SerialPricer:
         if not pricer_config:
             raise LoadPricerError(f"No pricers defined in {config_path}")
 
+        pricers = {}
+
         for config_item in pricer_config:
-            module = importlib.import_module(config_item.module)
+            config_item_label = f"Trade type: {config_item.trade_type} ({config_item.module}.{config_item.class_name})"
+
+            if not (config_item.trade_type and config_item.module and config_item.class_name):
+                raise LoadPricerError(f"Incomplete config item: {config_item_label}")
+
+            # Duplicate trade types
+            if config_item.trade_type in pricers:
+                continue
+
+            try:
+                module = importlib.import_module(config_item.module)
+            except AttributeError as exc:
+                raise LoadPricerError(f"Cannot import module for {config_item_label}: {exc}")
+
             engine_class = getattr(module, config_item.class_name)
-            self._pricers[config_item.trade_type] = engine_class()
+            if not callable(engine_class):
+                raise TypeError(f"{config_item.class_name} is not callable")
+
+            try:
+                pricers[config_item.trade_type] = engine_class()
+            except Exception as exc:
+                raise LoadPricerError(f"Cannot instantiate {config_item_label}: {exc}")
+
+        self._pricers.update(pricers)
+
