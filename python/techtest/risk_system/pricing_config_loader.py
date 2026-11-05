@@ -8,7 +8,7 @@ class PricingConfigLoader:
         self.config_file: str | None = None
 
     def load_config(self) -> list[PricingEngineConfigItem]:
-        if self.config_file is None:
+        if not self.config_file:
             raise ValueError("No configuration file provided")
 
         return self._load_engines_from_file(self.config_file)
@@ -20,7 +20,14 @@ class PricingConfigLoader:
         class_name = engine.get("class")
 
         if not all((trade_type, module, class_name)):
-            raise ValueError("Invalid pricing engine configuration")
+            missing = [ name for name, value in (
+                    ("tradeType", trade_type),
+                    ("module", module),
+                    ("class", class_name),
+            )
+                if not value]
+
+            raise ValueError(f"Invalid pricing engine configuration, missing: {missing}")
 
         return PricingEngineConfigItem(
             trade_type=trade_type,
@@ -29,8 +36,7 @@ class PricingConfigLoader:
         )
 
     def _load_engines_from_file(self, filename: str) -> list[PricingEngineConfigItem]:
-        tree = ET.parse(filename)
-        root = tree.getroot()
+        root = ET.parse(filename).getroot()
 
         return [self._create_price_engine_from_engine(engine)
         for engine in root.findall("Engine")]
