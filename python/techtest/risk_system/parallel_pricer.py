@@ -8,6 +8,7 @@ import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from techtest.risk_system.pricing_config_loader import PricingConfigLoader
+from techtest.risk_system.serial_pricer import LoadPricerError
 
 
 class ParallelPricer:
@@ -32,14 +33,46 @@ class ParallelPricer:
             for future in futures:
                 future.result()
 
-
     def _load_pricers(self) -> None:
+        config_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "pricing_config",
+            "PricingEngines.xml",
+        )
         pricing_config_loader = PricingConfigLoader()
-        pricing_config_loader.config_file = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "pricing_config", "PricingEngines.xml")
-        pricer_config = pricing_config_loader.load_config()
+        pricing_config_loader.config_file = config_path
+        try:
+            pricer_config = pricing_config_loader.load_config()
+        except Exception as exc:  # XML parse errors, IO errors, schema errors
+            raise LoadPricerError(f"Failed to parse {config_path}: {exc}") from exc
+
+        if not pricer_config:
+            raise LoadPricerError(f"No pricers defined in {config_path}")
+
+        pricers = {}
 
         for config_item in pricer_config:
-            module = importlib.import_module(config_item.module)
+            config_item_label = f"Trade type: {config_item.trade_type} ({config_item.module}.{config_item.class_name})"
+
+            if not (config_item.trade_type and config_item.module and config_item.class_name):
+                raise LoadPricerError(f"Incomplete config item: {config_item_label}")
+
+            # Duplicate trade types
+            if config_item.trade_type in pricers:
+                continue
+
+            try:
+                module = importlib.import_module(config_item.module)
+            except AttributeError as exc:
+                raise LoadPricerError(f"Cannot import module for {config_item_label}: {exc}")
+
             engine_class = getattr(module, config_item.class_name)
-            self._pricers[config_item.trade_type] = engine_class()
+            if not callable(engine_class):
+                raise TypeError(f"{config_item.class_name} is not callable")
+
+            try:
+                pricers[config_item.trade_type] = engine_class()
+            except Exception as exc:
+                raise LoadPricerError(f"Cannot instantiate {config_item_label}: {exc}")
+
+        self._pricers.update(pricers)
