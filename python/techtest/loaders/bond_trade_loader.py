@@ -32,5 +32,13 @@ class BondTradeLoader:
         # utf-8-sig skips the byte order mark at the start of the file
         with open(filename, encoding="utf-8-sig") as stream:
             next(stream, None)  # Skip the header line
-            for line in stream:
-                yield self._create_trade_from_line(line.rstrip("\r\n"))
+
+            for line_number, line in enumerate(stream, start=2):
+                line = line.rstrip("\r\n")
+                if not line:
+                    continue
+
+                try:
+                    yield self._create_trade_from_line(line)
+                except ValueError as exc:
+                    raise ValueError(f"{filename}, line {line_number}: {exc}") from exc
