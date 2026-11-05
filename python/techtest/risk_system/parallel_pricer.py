@@ -6,7 +6,7 @@ from typing import Iterable
 from techtest.models import PricingEngine, ResultReceiver, Trade
 import os
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from techtest.risk_system.pricing_config_loader import PricingConfigLoader
 from techtest.risk_system.serial_pricer import LoadPricerError
 
@@ -27,19 +27,29 @@ class ParallelPricer:
         self._load_pricers()
 
         with ThreadPoolExecutor() as executor:
-            futures = []
+            futures = {}
             for trade_container in trade_containers:
+                if trade_container is None:
+                    continue
                 for trade in trade_container:
+                    if trade is None:
+                        continue
                     if trade.trade_type not in self._pricers:
                         result_receiver.add_error(trade.trade_id, "No Pricing Engines available for this trade type")
                         continue
 
                     pricer = self._pricers[trade.trade_type]
-                    futures.append(executor.submit(pricer.price, trade, result_receiver))
+                    future = executor.submit(pricer.price, trade, result_receiver)
+                    futures[future] = trade
 
-            # Block until every pricing call has finished, re-raising any exception from a worker
-            for future in futures:
-                future.result()
+            # Block until every pricing call has finished, collect in order of completion
+            for future in as_completed(futures):
+                trade = futures[future]
+                try:
+                    future.result()
+                except Exception as exc:
+                    # One failure won't prevent the remaining pricing calls from completing.
+                    result_receiver.add_error(trade.trade_id, f"Pricing failed: {exc}")
 
     def _load_pricers(self) -> None:
         config_path = os.path.join(
