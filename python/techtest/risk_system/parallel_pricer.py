@@ -14,7 +14,6 @@ class ParallelPricer:
     def __init__(self) -> None:
         self._pricers: dict[str, PricingEngine] = {}
 
-
     def price(self, trade_containers: Iterable[Iterable[Trade]], result_receiver: ResultReceiver) -> None:
         self._load_pricers()
 
